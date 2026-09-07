@@ -1,0 +1,19 @@
+
+# 实验数据
+assets/
+
+# Python 编译缓存
+__pycache__/
+
+# 日志文件
+logs/
+
+# VS Code 配置文件
+.vscode/
+
+# Output
+outputs/
+
+# model
+yolov8n.onnx
+yolov8n.pt
