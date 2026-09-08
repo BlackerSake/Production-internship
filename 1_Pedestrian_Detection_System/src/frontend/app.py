@@ -4,20 +4,23 @@ Gradio 统一前端入口
     gradio 1_Pedestrian_Detection_System/src/frontend/app.py
     浏览器访问: 
 """
+
+import sys
+import gradio as gr
 from pathlib import Path
 
-import gradio as gr
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
 
-from src.frontend.pages.page_2_PDS import build_UI
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+from src.frontend.pages.page_2_PDS import build_1_UI
 
 def build_app() -> gr.Blocks:
     with gr.Blocks(title="生产实习") as app:
         gr.Markdown("# 2026年秋生产实习演示平台")
 
         with gr.Tab("3.1 行人检测系统"):
-            build_UI()
+            build_1_UI()
 
     return app
 
