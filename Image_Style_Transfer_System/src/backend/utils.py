@@ -7,7 +7,10 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from torchvision.utils import save_image
 
-from .dataset import to_display_tensor
+try:
+    from .dataset import to_display_tensor
+except ImportError:
+    from dataset import to_display_tensor
 
 
 def save_result(image, output_path):

@@ -4,7 +4,10 @@ import time
 
 import torch
 
-from .loss import CONTENT_LAYER, STYLE_LAYERS, calculate_losses, gram_matrix
+try:
+    from .loss import CONTENT_LAYER, STYLE_LAYERS, calculate_losses, gram_matrix
+except ImportError:
+    from loss import CONTENT_LAYER, STYLE_LAYERS, calculate_losses, gram_matrix
 
 
 def optimize_image(content, style, extractor, config, progress_callback=None):

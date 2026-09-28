@@ -7,11 +7,18 @@ from pathlib import Path
 
 import torch
 
-from .config import GatysConfig
-from .dataset import load_image
-from .model import VGGFeatureExtractor
-from .train import optimize_image
-from .utils import save_result, save_statistics
+try:
+    from .config import GatysConfig
+    from .dataset import load_image
+    from .model import VGGFeatureExtractor
+    from .train import optimize_image
+    from .utils import save_result, save_statistics
+except ImportError:
+    from config import GatysConfig
+    from dataset import load_image
+    from model import VGGFeatureExtractor
+    from train import optimize_image
+    from utils import save_result, save_statistics
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -76,3 +83,31 @@ def transfer_style(content_path, style_path, config=None, output_path=None, prog
         "history": history,
         "elapsed_seconds": elapsed_seconds,
     }
+
+
+def run_style_transfer(
+    content_path,
+    style_path,
+    image_size=GatysConfig.image_size,
+    steps=GatysConfig.steps,
+    learning_rate=GatysConfig.learning_rate,
+    content_weight=GatysConfig.content_weight,
+    style_weight=GatysConfig.style_weight,
+    progress_callback=None,
+):
+    """接收前端参数并执行一次风格迁移。"""
+    config = GatysConfig(
+        image_size=int(image_size),
+        steps=int(steps),
+        learning_rate=float(learning_rate),
+        content_weight=float(content_weight),
+        style_weight=float(style_weight),
+        log_interval=max(1, int(steps) // 20),
+    )
+    return transfer_style(
+        content_path,
+        style_path,
+        config=config,
+        progress_callback=progress_callback,
+    )
+
