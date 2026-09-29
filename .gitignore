@@ -1,7 +1,6 @@
 
 # 实验数据
-assets/
-*.csv
+
 # Python 编译缓存
 __pycache__/
 
@@ -12,8 +11,13 @@ logs/
 .vscode/
 
 # Output
-
+data/
 
 # model
 yolov8n.onnx
 yolov8n.pt
+
+WiderPerson/
+
+*.csv
+*.json

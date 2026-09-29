@@ -9,7 +9,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 print(PROJECT_ROOT)
 from Image_Style_Transfer_System.src.backend.config import GatysConfig
-from Image_Style_Transfer_System.src.backend.main import run_style_transfer
+from Image_Style_Transfer_System.src.backend.main import (
+    OUTPUT_DIR,
+    STATISTICS_DIR,
+    run_style_transfer
+)
 
 
 logger = logging.getLogger(__name__)
@@ -17,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 ASSETS_DIR = PROJECT_ROOT / "Image_Style_Transfer_System" / "assets"
 CONTENT_DIR = ASSETS_DIR / "test"
-OUTPUT_DIR = PROJECT_ROOT / "outputs" / "transferred"
 DEFAULT_STYLE_PATH = ASSETS_DIR / "sunout.jpg"
 
 
@@ -27,7 +30,7 @@ def _load_latest_result():
         raise gr.Error("暂无已有迁移结果")
 
     result_path = results[-1]
-    chart_path = result_path.with_name(f"{result_path.stem}_losses.png")
+    chart_path = STATISTICS_DIR / f"{result_path.stem}_losses.png"
     return (
         str(result_path),
         str(chart_path) if chart_path.exists() else None,
@@ -77,6 +80,54 @@ def _run_batch_style_transfer(
 
     logger.info("批量风格迁移完成：共处理 %d 张，风格图=%s", len(results), DEFAULT_STYLE_PATH)
     return results, f"已完成 {len(results)} 张，风格图：`{DEFAULT_STYLE_PATH}`"
+
+
+_run_batch_style_transfer_impl = _run_batch_style_transfer
+_load_latest_result_impl = _load_latest_result
+
+
+def _scan_results():
+    return sorted(OUTPUT_DIR.glob("*.jpg"), key=lambda path: path.stat().st_mtime)
+
+
+def _result_view(paths, index):
+    if not paths:
+        return None, 0, "暂无迁移结果"
+
+    index = max(0, min(int(index), len(paths) - 1))
+    return paths[index], index, f"当前结果：{index + 1}/{len(paths)}"
+
+
+def _change_result(paths, index, step):
+    return _result_view(paths, int(index) + step)
+
+
+def _run_batch_style_transfer(
+    count,
+    image_size,
+    steps,
+    learning_rate,
+    content_weight,
+    style_weight,
+    progress=gr.Progress(),
+):
+    results, status = _run_batch_style_transfer_impl(
+        count,
+        image_size,
+        steps,
+        learning_rate,
+        content_weight,
+        style_weight,
+        progress=progress,
+    )
+    result_image, result_index, _ = _result_view(results, 0)
+    return results, result_image, results, result_index, status
+
+
+def _load_latest_result():
+    result_image, loss_chart, status = _load_latest_result_impl()
+    results = [str(path) for path in _scan_results()]
+    return result_image, loss_chart, results, len(results) - 1, status
 
 
 def build_2_UI():
@@ -136,9 +187,15 @@ def build_2_UI():
             status_text = gr.Markdown("状态：等待处理")
 
         with gr.Column(scale=2):
+            with gr.Row():
+                prev_button = gr.Button("Previous", variant="secondary")
+                next_button = gr.Button("Next", variant="primary")
             batch_results = gr.Gallery(label="批量迁移结果", columns=3)
             result_image = gr.Image(label="最新迁移结果", type="filepath")
             loss_chart = gr.Image(label="损失变化曲线", type="filepath")
+
+    result_paths = gr.State([])
+    result_index = gr.State(0)
 
     process_button.click(
         _run_batch_style_transfer,
@@ -150,9 +207,19 @@ def build_2_UI():
             content_weight,
             style_weight,
         ],
-        outputs=[batch_results, status_text],
+        outputs=[batch_results, result_image, result_paths, result_index, status_text],
     )
     load_button.click(
         _load_latest_result,
-        outputs=[result_image, loss_chart, status_text],
+        outputs=[result_image, loss_chart, result_paths, result_index, status_text],
+    )
+    prev_button.click(
+        lambda paths, index: _change_result(paths, index, -1),
+        inputs=[result_paths, result_index],
+        outputs=[result_image, result_index, status_text],
+    )
+    next_button.click(
+        lambda paths, index: _change_result(paths, index, 1),
+        inputs=[result_paths, result_index],
+        outputs=[result_image, result_index, status_text],
     )
