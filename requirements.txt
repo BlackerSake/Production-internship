@@ -1,0 +1,10 @@
+datasets
+gradio
+huggingface-hub
+matplotlib
+numpy
+opencv-python-headless
+Pillow
+torch
+torchvision
+ultralytics
