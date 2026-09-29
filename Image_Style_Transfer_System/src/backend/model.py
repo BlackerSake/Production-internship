@@ -14,7 +14,12 @@ class VGGFeatureExtractor(nn.Module):
 
     def __init__(self, device):
         super().__init__()
-        self.features = vgg19(weights=VGG19_Weights.DEFAULT).features.to(device).eval()
+        vgg = vgg19(weights=VGG19_Weights.DEFAULT).features
+        # 关键：把 MaxPool2d 换成 AvgPool2d
+        for i, layer in enumerate(vgg):
+            if isinstance(layer, nn.MaxPool2d):
+                vgg[i] = nn.AvgPool2d(kernel_size=2, stride=2)
+        self.features = vgg.to(device).eval()
         self.features.requires_grad_(False)
 
     def forward(self, image):

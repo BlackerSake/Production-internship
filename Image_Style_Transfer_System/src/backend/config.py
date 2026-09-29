@@ -4,8 +4,8 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class GatysConfig:
     image_size: int = 512
-    steps: int = 300
-    learning_rate: float = 0.02
+    steps: int = 30
+    learning_rate: float = 1.0
     content_weight: float = 1.0
     style_weight: float = 1_000_000.0
     log_interval: int = 25

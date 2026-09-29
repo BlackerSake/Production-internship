@@ -1,0 +1,12 @@
+{
+  "content_image": "D:\\college\\Production-internship\\Image_Style_Transfer_System\\assets\\test\\COCO_val2014_000000001852.jpg",
+  "style_image": "D:\\college\\Production-internship\\Image_Style_Transfer_System\\assets\\sunout.jpg",
+  "result_image": "D:\\college\\Production-internship\\Image_Style_Transfer_System\\outputs\\transferred\\COCO_val2014_000000001852_sunout.jpg",
+  "device": "cuda",
+  "image_size": [
+    512,
+    342
+  ],
+  "steps": 30,
+  "elapsed_seconds": 23.112
+}
