@@ -4,6 +4,7 @@
 """
 
 from pathlib import Path
+import logging
 
 import torch
 
@@ -24,6 +25,12 @@ except ImportError:
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_DIR = PROJECT_ROOT / "outputs" / "transferred"
 STATISTICS_DIR = PROJECT_ROOT / "outputs" / "statistics"
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="[%(asctime)s] %(levelname)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 def pick_device():
@@ -51,6 +58,7 @@ def transfer_style(content_path, style_path, config=None, output_path=None, prog
     content_path = Path(content_path)
     style_path = Path(style_path)
     result_name = f"{content_path.stem}_{style_path.stem}"
+    logger.info("开始风格迁移：内容=%s，风格=%s，设备=%s", content_path, style_path, device)
 
     content = load_image(content_path, config.image_size, device)
     style = load_image(style_path, config.image_size, device, content.shape[-2:])
@@ -77,6 +85,7 @@ def transfer_style(content_path, style_path, config=None, output_path=None, prog
             "elapsed_seconds": round(elapsed_seconds, 3),
         },
     )
+    logger.info("风格迁移完成：结果=%s，耗时=%.2f 秒", result_path, elapsed_seconds)
     return {
         "result": result_path,
         "statistics": statistics,
@@ -110,4 +119,3 @@ def run_style_transfer(
         config=config,
         progress_callback=progress_callback,
     )
-

@@ -1,4 +1,5 @@
 from pathlib import Path
+import logging
 import sys
 
 import gradio as gr
@@ -11,57 +12,13 @@ from Image_Style_Transfer_System.src.backend.config import GatysConfig
 from Image_Style_Transfer_System.src.backend.main import run_style_transfer
 
 
-CONTENT_DIR = PROJECT_ROOT / "assets" / "val2014" / "val2014"
+logger = logging.getLogger(__name__)
+
+
+ASSETS_DIR = PROJECT_ROOT / "Image_Style_Transfer_System" / "assets"
+CONTENT_DIR = ASSETS_DIR / "test"
 OUTPUT_DIR = PROJECT_ROOT / "outputs" / "transferred"
-DEFAULT_CONTENT_PATH = CONTENT_DIR / "COCO_val2014_000000157581.jpg"
-DEFAULT_STYLE_PATH = CONTENT_DIR / "COCO_val2014_000000181249.jpg"
-
-
-def _default_image(path):
-    return str(path) if path.exists() else None
-
-
-def _run_style_transfer(
-    content_path,
-    style_path,
-    image_size,
-    steps,
-    learning_rate,
-    content_weight,
-    style_weight,
-    progress=gr.Progress(),
-):
-    if not content_path:
-        raise gr.Error("请选择内容图片")
-    if not style_path:
-        raise gr.Error("请选择风格图片")
-
-    def update_progress(step, total, losses):
-        progress(
-            step / total,
-            desc=f"第 {step}/{total} 步，总损失：{losses['total']:.4f}",
-        )
-
-    try:
-        result = run_style_transfer(
-            content_path=content_path,
-            style_path=style_path,
-            image_size=image_size,
-            steps=steps,
-            learning_rate=learning_rate,
-            content_weight=content_weight,
-            style_weight=style_weight,
-            progress_callback=update_progress,
-        )
-    except Exception as exc:
-        raise gr.Error(f"风格迁移失败：{exc}") from exc
-
-    status = (
-        f"处理完成：耗时 {result['elapsed_seconds']:.2f} 秒\n\n"
-        f"统计文件：`{result['statistics']['json']}`\n\n"
-        f"结果图片：`{result['result']}`"
-    )
-    return str(result["result"]), str(result["statistics"]["chart"]), status
+DEFAULT_STYLE_PATH = ASSETS_DIR / "sunout.jpg"
 
 
 def _load_latest_result():
@@ -78,23 +35,68 @@ def _load_latest_result():
     )
 
 
+def _run_batch_style_transfer(
+    count,
+    image_size,
+    steps,
+    learning_rate,
+    content_weight,
+    style_weight,
+    progress=gr.Progress(),
+):
+    images = sorted(CONTENT_DIR.glob("*.jpg"))[: int(count)]
+    if not images:
+        raise gr.Error(f"没有找到内容图片：{CONTENT_DIR}")
+    if not DEFAULT_STYLE_PATH.is_file():
+        raise gr.Error(f"风格图片不存在：{DEFAULT_STYLE_PATH}")
+
+    results = []
+    for index, content_path in enumerate(images):
+        logger.info("开始批量处理第 %d/%d 张：%s", index + 1, len(images), content_path)
+        def update_progress(step, total, losses):
+            progress(
+                (index + step / total) / len(images),
+                desc=f"第 {index + 1}/{len(images)} 张，第 {step}/{total} 步",
+            )
+
+        try:
+            result = run_style_transfer(
+                content_path=content_path,
+                style_path=DEFAULT_STYLE_PATH,
+                image_size=image_size,
+                steps=steps,
+                learning_rate=learning_rate,
+                content_weight=content_weight,
+                style_weight=style_weight,
+                progress_callback=update_progress,
+            )
+        except Exception as exc:
+            raise gr.Error(f"处理 {content_path.name} 失败：{exc}") from exc
+        results.append(str(result["result"]))
+        logger.info("批量处理完成第 %d/%d 张：%s", index + 1, len(images), result["result"])
+
+    logger.info("批量风格迁移完成：共处理 %d 张，风格图=%s", len(results), DEFAULT_STYLE_PATH)
+    return results, f"已完成 {len(results)} 张，风格图：`{DEFAULT_STYLE_PATH}`"
+
+
 def build_2_UI():
     gr.Markdown("# Gatys 图像风格迁移")
+    image_count = len(list(CONTENT_DIR.glob("*.jpg")))
 
     with gr.Row():
         with gr.Column(scale=1):
-            gr.Markdown("### 输入图片")
-            content_image = gr.Image(
-                label="内容图片",
-                type="filepath",
-                sources=["upload"],
-                value=_default_image(DEFAULT_CONTENT_PATH),
+            gr.Markdown("### 数据来源")
+            gr.Markdown(
+                f"内容目录：`{CONTENT_DIR}`\n\n"
+                f"风格图片：`{DEFAULT_STYLE_PATH}`"
             )
-            style_image = gr.Image(
-                label="风格图片",
-                type="filepath",
-                sources=["upload"],
-                value=_default_image(DEFAULT_STYLE_PATH),
+
+            batch_count = gr.Number(
+                value=max(1, image_count),
+                minimum=1,
+                maximum=max(1, image_count),
+                precision=0,
+                label="处理前 N 张（默认全部）",
             )
 
             gr.Markdown("### 迁移参数")
@@ -134,21 +136,21 @@ def build_2_UI():
             status_text = gr.Markdown("状态：等待处理")
 
         with gr.Column(scale=2):
-            result_image = gr.Image(label="迁移结果", type="filepath")
+            batch_results = gr.Gallery(label="批量迁移结果", columns=3)
+            result_image = gr.Image(label="最新迁移结果", type="filepath")
             loss_chart = gr.Image(label="损失变化曲线", type="filepath")
 
     process_button.click(
-        _run_style_transfer,
+        _run_batch_style_transfer,
         inputs=[
-            content_image,
-            style_image,
+            batch_count,
             image_size,
             steps,
             learning_rate,
             content_weight,
             style_weight,
         ],
-        outputs=[result_image, loss_chart, status_text],
+        outputs=[batch_results, status_text],
     )
     load_button.click(
         _load_latest_result,

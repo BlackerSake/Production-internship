@@ -1,5 +1,6 @@
 """Gatys 风格迁移的迭代优化过程。"""
 
+import logging
 import time
 
 import torch
@@ -8,6 +9,9 @@ try:
     from .loss import CONTENT_LAYER, STYLE_LAYERS, calculate_losses, gram_matrix
 except ImportError:
     from loss import CONTENT_LAYER, STYLE_LAYERS, calculate_losses, gram_matrix
+
+
+logger = logging.getLogger(__name__)
 
 
 def optimize_image(content, style, extractor, config, progress_callback=None):
@@ -42,6 +46,14 @@ def optimize_image(content, style, extractor, config, progress_callback=None):
                 "style": style_loss.item(),
             }
             history.append(row)
+            logger.info(
+                "风格迁移迭代 %d/%d：总损失=%.4f，内容损失=%.4f，风格损失=%.4f",
+                step,
+                config.steps,
+                row["total"],
+                row["content"],
+                row["style"],
+            )
             if progress_callback:
                 progress_callback(step, config.steps, row)
 
